@@ -25,7 +25,8 @@ def combine_representations(dist_matrix, voi_index, S_indices, model_name=None, 
     M = np.sum(abs(dist_matrix))
     
     S = len(S_indices)
-    Q_indices = np.array([i for i in np.concatenate((range(0, voi_index), range(voi_index+1, n))) if i not in S_indices])
+    Q_indices = np.array([int(i) for i in np.concatenate((range(0, voi_index), range(voi_index+1, n))) if i not in S_indices])
+
     Q = len(Q_indices)
     
     M = np.sum(abs(dist_matrix))

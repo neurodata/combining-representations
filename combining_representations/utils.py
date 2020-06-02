@@ -5,7 +5,7 @@ from scipy.stats import gaussian_kde
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-import combining_representations as cr
+from combining_representations import combining_representations as cr
 
 def generate_latent_positions(n=50, d=2, acorn=None):
     """
@@ -135,6 +135,21 @@ def generate_S_indices(dist_matrix, alpha, n_inds=1, return_new_dists=False, bet
     else:
         return S
 
+def generate_2d_rotation(theta=0, acorn=None):
+    if acorn is not None:
+        np.random.seed(acorn)
+    
+    R = np.array([
+        [np.cos(theta), np.sin(theta)],
+        [-np.sin(theta), np.cos(theta)]
+    ])
+    
+    return R
+
+def identity(X, ind):
+    _, d = X.shape
+    return np.eye(d)
+
 
 def rank_distance(true_ranks, estimated_ranks):
     return np.mean(abs(true_ranks - estimated_ranks))
@@ -187,7 +202,7 @@ def average_rank(rank_lists, s_star_indices):
     return average_ranks
 
 
-def monte_carlo(mc_its, P, emebdding_functions, covariance_functions, 
+def monte_carlo(mc_its, P, embedding_functions, covariance_functions, 
                 alpha, n_inds, s_stars, latent=True, poc=False, 
                 metric='rank', beta=0.25, k=1,
                 acorn=None):
@@ -240,7 +255,7 @@ def monte_carlo(mc_its, P, emebdding_functions, covariance_functions,
         for j in range(k):
             connected = False
             while not connected:
-                A_temp = graspy.simulations.rdpg(X)
+                A_temp = graspy.simulations.rdpg(P)
                 connected = graspy.utils.is_fully_connected(A_temp)
                 A_bar = (1/(j+1)) * A_temp + (j/(j+1))*A_bar
             
@@ -258,7 +273,7 @@ def monte_carlo(mc_its, P, emebdding_functions, covariance_functions,
                 dist_matrix = generate_distance_matrix(A_bar, embedding_functions[2:], 
                                                    covariance_functions=covariance_functions[2:])
                     
-        alpha_hat_vec, opt_dists = cr.combine_representations(dist_matrix, S_inds)
+        alpha_hat_vec, opt_dists = cr.combine_representations(dist_matrix, 0, S_inds)
         
         if J in [2, 4]:
             alpha_hats[i] = alpha_hat_vec[0]
