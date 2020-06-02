@@ -1,7 +1,13 @@
 from setuptools import setup, find_packages
 
+requirements = [
+    "numpy>=1.8.1",
+]
+
 with open("README.md", "r") as readme_file:
     readme = readme_file.read()
+
+
 
 setup(
     name="combining-representations",
