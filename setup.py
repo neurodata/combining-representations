@@ -14,6 +14,4 @@ setup(
     url="https://github.com/neurodata/combining-representations/",
     packages=find_packages(),
     install_requires=requirements,
-    classifiers=[,
-    ],
 )
