@@ -2,6 +2,12 @@ from setuptools import setup, find_packages
 
 requirements = [
     "numpy>=1.8.1",
+    "graspy",
+    "sklearn",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "pulp"
 ]
 
 with open("README.md", "r") as readme_file:
