@@ -8,7 +8,7 @@ import pulp
 import numpy as np
 
 
-def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True):
+def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, solver='pulp'):
     """
     A function to find the weights of optimal linear combination of representations.
     
@@ -99,7 +99,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
             temp_s = gp.tupledict([((i), dist_matrix[s, i]) for i in range(J)])
             for i, q in enumerate(Q_indices):
                 temp_q = gp.tupledict([((i), dist_matrix[q, i]) for i in range(J)])
-                m.addConstr(w.prod(temp_s) <= w.prod(temp_q) + ind[i]*M)
+                model.addConstr(w.prod(temp_s) <= w.prod(temp_q) + ind[i]*M)
             
         model.optimize()
         alpha_hat = np.array([i.X for i in list(w.values())])
