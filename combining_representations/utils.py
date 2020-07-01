@@ -205,7 +205,7 @@ def average_rank(rank_lists, s_star_indices):
 def monte_carlo(mc_its, P, embedding_functions, covariance_functions, 
                 alpha, n_inds, s_stars, latent=True, poc=False, 
                 metric='rank', beta=0.25, k=1,
-                acorn=None):
+                acorn=None, solver='pulp'):
     """
     Function to run a bunch of simulations.
     
@@ -273,7 +273,7 @@ def monte_carlo(mc_its, P, embedding_functions, covariance_functions,
                 dist_matrix = generate_distance_matrix(A_bar, embedding_functions[2:], 
                                                    covariance_functions=covariance_functions[2:])
                     
-        alpha_hat_vec, opt_dists = cr.combine_representations(dist_matrix, 0, S_inds)
+        alpha_hat_vec, opt_dists = cr.combine_representations(dist_matrix, 0, S_inds, solver=solver)
         
         if J in [2, 4]:
             alpha_hats[i] = alpha_hat_vec[0]
