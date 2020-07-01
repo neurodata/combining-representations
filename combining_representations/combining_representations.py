@@ -60,6 +60,9 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
             pulp.lpSum(
                 [ind[(q)] for q in Q_indices]
             )
+            +
+            pulp.lpSum([weights[(j)] for j in range(J)])
+
         )
 
         model += (
@@ -105,6 +108,9 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
         alpha_hat = np.array([i.X for i in list(w.values())])
     
     if return_new_dists:
-        return alpha_hat, np.average(dist_matrix, axis=1, weights=alpha_hat)
+        if np.sum(alpha_hat == 0) == J:
+            return alpha_hat, dist_matrix
+        else:
+            return alpha_hat, np.average(dist_matrix, axis=1, weights=alpha_hat)
     
     return alpha_hat

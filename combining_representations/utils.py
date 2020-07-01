@@ -5,7 +5,7 @@ from scipy.stats import gaussian_kde
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from combining_representations import combining_representations as cr
+from learn2rank import learn2rank as l2r
 
 def generate_latent_positions(n=50, d=2, acorn=None):
     """
@@ -273,7 +273,7 @@ def monte_carlo(mc_its, P, embedding_functions, covariance_functions,
                 dist_matrix = generate_distance_matrix(A_bar, embedding_functions[2:], 
                                                    covariance_functions=covariance_functions[2:])
                     
-        alpha_hat_vec, opt_dists = cr.combine_representations(dist_matrix, 0, S_inds, solver=solver)
+        alpha_hat_vec, opt_dists = l2r.combine_representations(dist_matrix, 0, S_inds, solver=solver)
         
         if J in [2, 4]:
             alpha_hats[i] = alpha_hat_vec[0]
@@ -367,3 +367,133 @@ def find_max_alpha(dist_matrix, S_indices, min_alpha, h=0.0001, max_its=50):
             
         i+=1
     return current
+
+def find_best_vertices(dist_matrix, S_indices):
+    """
+    A function to find the best individual metrics.
+
+    Input
+    dist_matrix - array (shape=(n,J))
+        An array containing J distances from an object of interest to n-1 other objects.
+    S_indices - array-like
+        The set of vertices known to be similar to an object of interest.
+        
+    Returns
+    The metrics that minimize the maximum rank of an element of S and the corresponding
+        objective function value.
+
+    """
+
+    n, J = dist_matrix.shape
+
+    argmin = []
+    min_ = n
+
+    for j in range(J):
+        dist = dist_matrix[:, j]
+        rank_list = np.argsort(dist)
+        
+        S_ranks = np.zeros(len(S_indices), dtype='int')
+        for i, s in enumerate(S_indices):
+            S_ranks[i] = np.where(rank_list == s)[0][0]
+                    
+        obj_func_value = len(np.delete(np.arange(max(S_ranks)+1), S_ranks)) - 1
+        if obj_func_value == min_:
+            argmin.append(j)
+        elif obj_func_value < min_:
+            argmin = [j]
+            min_ = obj_func_value
+
+    return np.array(argmin), min_
+
+def evaluate_best_vertices(dist_matrix, vertices, s_star):
+    """
+    A function to evaluate a set of individual metrics.
+    
+    Input
+    dist_matrix - array (shape=(n,J))
+        An array containing J distances from an object of interest to n-1 other objects.
+    vertices - array-like
+        The set of individual metrics to evaluate.
+    s_star - array-like
+        The set of indices for which the individual metrics are evaluated.
+        
+    
+    Return
+    ranks - np.array
+        The rankings of the elements of s_star.
+    """
+    
+    n, _ = dist_matrix.shape
+    J_ = len(vertices)
+    
+    ranks = np.zeros(len(vertices))
+    
+    if len(s_star) > 1:
+        raise ValueError('not implemented')
+        
+    for j, v in enumerate(vertices):
+        temp_ranks = np.argsort(dist_matrix[:, j])
+        ranks[j] = np.array([np.where(temp_ranks == s)[0][0] for s in s_star])
+    
+    return ranks
+
+def remove_S_indices(rank_lists, S_indices):
+    """
+    A function to remove elements from a rank-list.
+    
+    Input
+    rank_lists - list
+        A list of arrays.
+    S_indices - array-like
+        The set of objects to be removed.
+        
+    Return
+    new_rank_lists - list
+        A list of arrays with S_indices removed.
+    """
+    
+    new_rank_lists = []
+    for i, r in enumerate(rank_lists):
+        idx = np.array([np.where(r == s)[0][0] for s in S_indices])
+        new_rank_lists.append(np.delete(r, idx))
+        
+    return new_rank_lists
+        
+
+def get_unique_indices(all_deltas, indices=np.array([0]), threshold=0):
+    """
+    A function to find the "unique" metrics.
+    
+    Input
+    all_deltas - list
+        A list of matrices of shape (n,J).
+    indices - array-like
+        A list containing the indices of the metrics that we know we want to use.
+    threshold - float
+        "Unique"ness threshold.
+        
+    Return
+    An array of unique metric indices.
+    """
+    
+    n, J = all_deltas[0].shape
+    
+    triu=np.triu_indices(J, k=1)
+    
+    for i, delta in enumerate(all_deltas):
+        temp_diff = pairwise_distances(delta.T)
+        candidates = np.array([i for i in range(J) if i not in indices])
+        
+        new_indices = []
+        
+        j = 0
+        
+        while j < len(candidates):
+            candidates[j], temp_diff[:, indices]
+            if np.sum(temp_diff[candidates[j], indices] < threshold) == 1:
+                indices = np.concatenate((indices, [candidates[j]]))
+                
+            j+=1
+                
+    return np.sort(indices)
