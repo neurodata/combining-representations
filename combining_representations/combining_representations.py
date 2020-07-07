@@ -30,7 +30,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     """
     
     n, J = dist_matrix.shape
-    M = max(abs(dist_matrix))
+    M = np.max(abs(dist_matrix))
     
     S = len(S_indices)
     Q_indices = np.array([int(i) for i in np.concatenate((range(0, voi_index), range(voi_index+1, n))) if i not in S_indices])
