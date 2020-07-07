@@ -57,6 +57,9 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
             pulp.lpSum(
                 [ind[(q)] for q in Q_indices]
             )
+            +
+            pulp.lpSum([weights[(j)] for j in range(J)])
+
         )
 
         model += (
@@ -112,8 +115,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
             return alpha_hat, np.average(dist_matrix, axis=1, weights=alpha_hat)
     
     return alpha_hat
-
-
+ 
 def multiple_pairs(dist_matrices, voi_ind_to_S_sets, solver='pulp'):
     voi_indices = list(voi_ind_to_S_sets.keys())
     S_sets = list(voi_indices_to_S_sets.values())

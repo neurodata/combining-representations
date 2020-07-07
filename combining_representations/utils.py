@@ -495,5 +495,5 @@ def get_unique_indices(all_deltas, indices=np.array([0]), threshold=0):
                 indices = np.concatenate((indices, [candidates[j]]))
                 
             j+=1
-                
+              
     return np.sort(indices)
