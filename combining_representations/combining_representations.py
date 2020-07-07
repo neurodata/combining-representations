@@ -8,7 +8,7 @@ import pulp
 import numpy as np
 
 
-def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, solver='pulp'):
+def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, solver='coin_cmd', api='pulp'):
     """
     A function to find the weights of optimal linear combination of representations.
     
@@ -30,17 +30,14 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     """
     
     n, J = dist_matrix.shape
-    M = np.sum(abs(dist_matrix))
+    M = max(abs(dist_matrix))
     
     S = len(S_indices)
     Q_indices = np.array([int(i) for i in np.concatenate((range(0, voi_index), range(voi_index+1, n))) if i not in S_indices])
 
     Q = len(Q_indices)
-    
-    M = np.sum(abs(dist_matrix))
 
-
-    if solver == 'pulp':
+    if api == 'pulp':
         model=pulp.LpProblem(sense=pulp.LpMinimize)
         ind = pulp.LpVariable.dicts("indicators for elements not in S", 
                                     (q for q in Q_indices),
@@ -85,9 +82,13 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
                     pulp.lpSum(ind[(q)] * M)
                 )
 
-        model.solve()
+        if solver=='pulp':
+            model.solve()
+        elif solver =='coin_cmd':
+            model.solve(solver=pulp.COIN_CMD())
+            
         alpha_hat = np.array([w.varValue for w in weights.values()])
-    elif solver=='gurobi':
+    elif api=='gurobi':
         model= gp.Model()
         
         model.setParam('OutputFlag', 0)
@@ -113,4 +114,62 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
         else:
             return alpha_hat, np.average(dist_matrix, axis=1, weights=alpha_hat)
     
+    return alpha_hat
+ 
+def multiple_pairs(dist_matrices, voi_ind_to_S_sets, solver='pulp'):
+    voi_indices = list(voi_ind_to_S_sets.keys())
+    S_sets = list(voi_indices_to_S_sets.values())
+
+    M = max(abs(dist_matrices))
+
+    voi_to_Q_indices = {voi: np.array([int(i) for i in np.concatenate((range(0, voi), range(voi+1, n))) if i not in voi_ind_to_S_sets[voi]]) for voi in voi_indices}
+
+    if solver == 'pulp':
+        model=pulp.LpProblem(sense=pulp.LpMinimize)
+
+        ind = pulp.LpVariable.dicts("indicators for elements not in S", 
+                                    ('voi' + str(voi) + str(q) for q in voi_to_Q_indices[voi] for voi in voi_indices),
+                                    cat='Integer',
+                                    upBound=1,
+                                    lowBound=0
+                                    )
+
+        weights = pulp.LpVariable.dicts("weights for representations",
+                                       (j for j in range(J)),
+                                       cat='Continuous',
+                                       upBound=1,
+                                       lowBound=0
+                                       )
+
+        model += (
+            pulp.lpSum(
+                [ind[('voi' + str(voi) + str(q))] for q in voi_to_Q_indices[voi] for voi in voi_indices]
+            )
+
+        )
+
+        model += (
+            pulp.lpSum(
+                [weights[(j)] for j in range(J)]
+            ) == 1
+        )
+
+        for voi in voi_indices:
+            for s in S_sets[voi]:
+                for q in voi_to_Q_indices[voi]:
+                    model += (
+                        pulp.lpSum(
+                            [weights[(j)] * dist_matrix[s, j] for j in range(J)]
+                        )
+                        <=
+                        pulp.lpSum(
+                            [weights[(j)] * dist_matrix[q, j] for j in range(J)]
+                        ) 
+                        + 
+                        pulp.lpSum(ind[('voi' + str(voi) + str(q))] * M)
+                    )
+
+        model.solve()
+        alpha_hat = np.array([w.varValue for w in weights.values()])
+
     return alpha_hat
