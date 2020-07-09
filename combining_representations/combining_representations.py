@@ -116,19 +116,21 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     
     return alpha_hat
  
-def multiple_pairs(dist_matrices, voi_ind_to_S_sets, solver='pulp'):
-    voi_indices = list(voi_ind_to_S_sets.keys())
-    S_sets = list(voi_indices_to_S_sets.values())
+def multiple_pairs(dist_matrices, voi_ind_to_S_sets, solver='coin_cmd', api='pulp'):
 
-    M = max(abs(dist_matrices))
+    J, n, _ = dist_matrices.shape
+    voi_indices = list(voi_ind_to_S_sets.keys())
+    S_sets = list(voi_ind_to_S_sets.values())
+    
+    M = np.max(np.max(abs(dist_matrices), axis=0))
 
     voi_to_Q_indices = {voi: np.array([int(i) for i in np.concatenate((range(0, voi), range(voi+1, n))) if i not in voi_ind_to_S_sets[voi]]) for voi in voi_indices}
 
-    if solver == 'pulp':
+    if api == 'pulp':
         model=pulp.LpProblem(sense=pulp.LpMinimize)
 
         ind = pulp.LpVariable.dicts("indicators for elements not in S", 
-                                    ('voi' + str(voi) + str(q) for q in voi_to_Q_indices[voi] for voi in voi_indices),
+                                    ('voi' + str(voi) + str(q) for voi in voi_indices for q in voi_to_Q_indices[voi]),
                                     cat='Integer',
                                     upBound=1,
                                     lowBound=0
@@ -143,7 +145,7 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, solver='pulp'):
 
         model += (
             pulp.lpSum(
-                [ind[('voi' + str(voi) + str(q))] for q in voi_to_Q_indices[voi] for voi in voi_indices]
+                [ind[('voi' + str(voi) + str(q))] for voi in voi_indices for q in voi_to_Q_indices[voi]]
             )
 
         )
@@ -155,21 +157,26 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, solver='pulp'):
         )
 
         for voi in voi_indices:
-            for s in S_sets[voi]:
+            dist_matrix = dist_matrices[:, :, voi]
+            for s in voi_ind_to_S_sets[voi]:
                 for q in voi_to_Q_indices[voi]:
                     model += (
                         pulp.lpSum(
-                            [weights[(j)] * dist_matrix[s, j] for j in range(J)]
+                            [weights[(j)] * dist_matrix[j, s] for j in range(J)]
                         )
                         <=
                         pulp.lpSum(
-                            [weights[(j)] * dist_matrix[q, j] for j in range(J)]
+                            [weights[(j)] * dist_matrix[j, q] for j in range(J)]
                         ) 
                         + 
                         pulp.lpSum(ind[('voi' + str(voi) + str(q))] * M)
                     )
 
-        model.solve()
+        if solver == 'pulp':
+            model.solve()
+        elif solver == 'coin_cmd':
+            model.solve(solver=pulp.COIN_CMD())
+
         alpha_hat = np.array([w.varValue for w in weights.values()])
 
     return alpha_hat
