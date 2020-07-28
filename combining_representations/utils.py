@@ -427,16 +427,26 @@ def evaluate_best_vertices(dist_matrix, vertices, s_star):
     n, _ = dist_matrix.shape
     J_ = len(vertices)
     
-    ranks = np.zeros(len(vertices))
-    
-    if len(s_star) > 1:
-        raise ValueError('not implemented')
+    ranks = np.zeros((len(s_star), len(vertices)))
         
-    for j, v in enumerate(vertices):
-        temp_ranks = np.argsort(dist_matrix[:, j])
-        ranks[j] = np.array([np.where(temp_ranks == s)[0][0] for s in s_star])
+    for i, s in enumerate(s_star):
+        for j, v in enumerate(vertices):
+            temp_ranks = np.argsort(dist_matrix[:, j])
+            ranks[i, j] = np.array([np.where(temp_ranks == s)[0][0]])
     
     return ranks
+
+def edit_dist_matrices(dist_matrices, s_stars, ranks, threshold=500):
+    editted_dist_matrices = dist_matrices.copy()
+    
+    arg_sorts = np.argsort(dist_matrices, axis=0).T
+    
+    for i, s in enumerate(s_stars):
+        for j, s_rank in enumerate(ranks[i]):
+            if s_rank > threshold:
+                editted_dist_matrices[s, j] = dist_matrices[arg_sorts[j][threshold], j] + (1e-10 / s)
+                
+    return editted_dist_matrices
 
 def remove_S_indices(rank_lists, S_indices):
     """
