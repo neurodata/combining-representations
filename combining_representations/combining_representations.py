@@ -7,8 +7,10 @@ except:
 import pulp
 import numpy as np
 
+import .utils
 
-def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, solver='coin_cmd', api='pulp'):
+
+def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, threshold=None, solver='coin_cmd', api='pulp'):
     """
     A function to find the weights of optimal linear combination of representations.
     
@@ -28,7 +30,12 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     weights - np.array (length=J)
         Array containing the coefficients for the optimal distance function.
     """
-    
+    n, J = dist_matrix.shape
+
+    if threshold is not None:
+        ranks = evaluate_best_vertices(dist_matrix, vertices=np.arange(J), s_star=S_indices)
+        dist_matrix = edit_dist_matrices(dist_matrix, S, ranks, threshold)
+
     n, J = dist_matrix.shape
     M = np.max(abs(dist_matrix))
     
@@ -116,13 +123,31 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     
     return alpha_hat
  
-def multiple_pairs(dist_matrices, voi_ind_to_S_sets, solver='pulp'):
+def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, solver='pulp'):
     voi_indices = list(voi_ind_to_S_sets.keys())
     S_sets = list(voi_indices_to_S_sets.values())
 
     M = max(abs(dist_matrices))
 
+    a, b, c = dist_matrices.shape
+
+    if b == c:
+        J = a
+        n = b
+    else:
+        n_voi = a
+        n = b
+        J = c
+
     voi_to_Q_indices = {voi: np.array([int(i) for i in np.concatenate((range(0, voi), range(voi+1, n))) if i not in voi_ind_to_S_sets[voi]]) for voi in voi_indices}
+
+    if threshold is not None:
+        if b != c:
+            raise ValueError('dist_matrices not shaped correctly')
+        temp_dist_matrices = np.zeros((n_voi, n, J))
+        for i, voi in enumerate(voi_indices):
+            temp_ranks = evaluate_best_vertices(dist_matrices[i], np.arange(J), S_sets[i])
+            temp_dist_matrices[i] = edit_dist_matrices(dist_matrices[i], S_sets[i], temp_ranks, threshold)
 
     if solver == 'pulp':
         model=pulp.LpProblem(sense=pulp.LpMinimize)
@@ -159,11 +184,11 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, solver='pulp'):
                 for q in voi_to_Q_indices[voi]:
                     model += (
                         pulp.lpSum(
-                            [weights[(j)] * dist_matrix[s, j] for j in range(J)]
+                            [weights[(j)] * dist_matrix[voi, s, j] for j in range(J)]
                         )
                         <=
                         pulp.lpSum(
-                            [weights[(j)] * dist_matrix[q, j] for j in range(J)]
+                            [weights[(j)] * dist_matrix[voi, q, j] for j in range(J)]
                         ) 
                         + 
                         pulp.lpSum(ind[('voi' + str(voi) + str(q))] * M)
