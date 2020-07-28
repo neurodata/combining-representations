@@ -34,7 +34,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
 
     if threshold is not None:
         ranks = evaluate_best_vertices(dist_matrix, vertices=np.arange(J), s_star=S_indices)
-        dist_matrix = edit_dist_matrices(dist_matrix, S, ranks, threshold)
+        dist_matrix = edit_dist_matrices(dist_matrix, S_indices, ranks, threshold)
 
     n, J = dist_matrix.shape
     M = np.max(abs(dist_matrix))
