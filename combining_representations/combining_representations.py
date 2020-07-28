@@ -7,7 +7,7 @@ except:
 import pulp
 import numpy as np
 
-import .utils
+from .utils import *
 
 
 def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, threshold=None, solver='coin_cmd', api='pulp'):
