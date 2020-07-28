@@ -180,17 +180,17 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, solver='pul
             ) == 1
         )
 
-        for voi in voi_indices:
+        for i, voi in enumerate(voi_indices):
             dist_matrix = dist_matrices[:, :, voi]
             for s in voi_ind_to_S_sets[voi]:
                 for q in voi_to_Q_indices[voi]:
                     model += (
                         pulp.lpSum(
-                            [weights[(j)] * dist_matrix[voi, s, j] for j in range(J)]
+                            [weights[(j)] * dist_matrix[i, s, j] for j in range(J)]
                         )
                         <=
                         pulp.lpSum(
-                            [weights[(j)] * dist_matrix[voi, q, j] for j in range(J)]
+                            [weights[(j)] * dist_matrix[i, q, j] for j in range(J)]
                         ) 
                         + 
                         pulp.lpSum(ind[('voi' + str(voi) + str(q))] * M)
