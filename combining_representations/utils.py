@@ -5,7 +5,7 @@ from scipy.stats import gaussian_kde
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from .combining_representations import combine_representations
+from .combining_representations import *
 
 def generate_latent_positions(n=50, d=2, acorn=None):
     """
