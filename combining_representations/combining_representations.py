@@ -195,12 +195,15 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, solver='pul
                         + 
                         pulp.lpSum(ind[('voi' + str(voi) + str(q))] * M)
                     )
+        try:
+            if solver == 'pulp':
+                model.solve()
+            elif solver == 'coin_cmd':
+                model.solve(solver=pulp.COIN_CMD())
 
-        if solver == 'pulp':
-            model.solve()
-        elif solver == 'coin_cmd':
-            model.solve(solver=pulp.COIN_CMD())
-
-        alpha_hat = np.array([w.varValue for w in weights.values()])
+            alpha_hat = np.array([w.varValue for w in weights.values()])
+        except Exception as e: 
+            print(e)
+            alpha_hat = None
 
     return alpha_hat
