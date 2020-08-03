@@ -45,6 +45,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     Q = len(Q_indices)
 
     up_bound = int(np.math.ceil(1 / variable_num_tol))
+    variable_num_tol = 1 / up_bound
 
     if api == 'pulp':
         model=pulp.LpProblem(sense=pulp.LpMinimize)
@@ -70,19 +71,19 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
 
         model += (
             pulp.lpSum(
-                [(1 / up_bound) *  weights[(j)] for j in range(J)]
-            ) == 1
+                [weights[(j)] for j in range(J)]
+            ) == up_bound
         )
 
         for s in S_indices:
             for q in Q_indices:
                 model += (
                     pulp.lpSum(
-                        [weights[(j)] * dist_matrix[s, j] for j in range(J)]
+                        variable_num_tol * [weights[(j)] * dist_matrix[s, j] for j in range(J)]
                     )
                     <=
                     pulp.lpSum(
-                        [weights[(j)] * dist_matrix[q, j] for j in range(J)]
+                        variable_num_tol * [weights[(j)] * dist_matrix[q, j] for j in range(J)]
                     ) 
                     + 
                     pulp.lpSum(ind[(q)] * M)
