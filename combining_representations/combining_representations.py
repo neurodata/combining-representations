@@ -10,7 +10,7 @@ import numpy as np
 from .utils import *
 
 
-def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, threshold=None, solver='coin_cmd', api='pulp'):
+def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, threshold=None, solver='coin_cmd', api='pulp', variable_num_tol=0.001):
     """
     A function to find the weights of optimal linear combination of representations.
     
@@ -44,6 +44,8 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
 
     Q = len(Q_indices)
 
+    up_bound = int(np.math.ceil(1 / variable_num_tol))
+
     if api == 'pulp':
         model=pulp.LpProblem(sense=pulp.LpMinimize)
         ind = pulp.LpVariable.dicts("indicators for elements not in S", 
@@ -55,8 +57,8 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
 
         weights = pulp.LpVariable.dicts("weights for representations",
                                        (j for j in range(J)),
-                                       cat='Continuous',
-                                       upBound=1,
+                                       cat='Integer',
+                                       upBound=up_bound,
                                        lowBound=0
                                        )
 
@@ -64,14 +66,11 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
             pulp.lpSum(
                 [ind[(q)] for q in Q_indices]
             )
-            +
-            pulp.lpSum([weights[(j)] for j in range(J)])
-
         )
 
         model += (
             pulp.lpSum(
-                [weights[(j)] for j in range(J)]
+                [(1 / up_bound) *  weights[(j)] for j in range(J)]
             ) == 1
         )
 
