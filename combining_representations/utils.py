@@ -5,7 +5,7 @@ from scipy.stats import gaussian_kde
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from learn2rank import learn2rank as l2r
+from .combining_representations import *
 
 def generate_latent_positions(n=50, d=2, acorn=None):
     """
@@ -273,7 +273,7 @@ def monte_carlo(mc_its, P, embedding_functions, covariance_functions,
                 dist_matrix = generate_distance_matrix(A_bar, embedding_functions[2:], 
                                                    covariance_functions=covariance_functions[2:])
                     
-        alpha_hat_vec, opt_dists = l2r.combine_representations(dist_matrix, 0, S_inds, solver=solver)
+        alpha_hat_vec, opt_dists = combine_representations(dist_matrix, 0, S_inds, solver=solver)
         
         if J in [2, 4]:
             alpha_hats[i] = alpha_hat_vec[0]
