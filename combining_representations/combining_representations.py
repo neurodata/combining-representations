@@ -10,7 +10,7 @@ import numpy as np
 from .utils import *
 
 
-def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, threshold=None, solver='coin_cmd', api='pulp'):
+def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, threshold=None, solver='coin_cmd', api='pulp', variable_num_tol=0.001):
     """
     A function to find the weights of optimal linear combination of representations.
     
@@ -44,6 +44,9 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
 
     Q = len(Q_indices)
 
+    up_bound = int(np.math.ceil(1 / variable_num_tol))
+    variable_num_tol = 1 / up_bound
+
     if api == 'pulp':
         model=pulp.LpProblem(sense=pulp.LpMinimize)
         ind = pulp.LpVariable.dicts("indicators for elements not in S", 
@@ -55,8 +58,8 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
 
         weights = pulp.LpVariable.dicts("weights for representations",
                                        (j for j in range(J)),
-                                       cat='Continuous',
-                                       upBound=1,
+                                       cat='Integer',
+                                       upBound=up_bound,
                                        lowBound=0
                                        )
 
@@ -64,15 +67,12 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
             pulp.lpSum(
                 [ind[(q)] for q in Q_indices]
             )
-            +
-            pulp.lpSum([weights[(j)] for j in range(J)])
-
         )
 
         model += (
             pulp.lpSum(
                 [weights[(j)] for j in range(J)]
-            ) == 1
+            ) == up_bound
         )
 
         for s in S_indices:
@@ -123,7 +123,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     
     return alpha_hat
  
-def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, solver='pulp'):
+def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='pulp', solver='pulp', variable_num_tol=0.001):
     voi_indices = list(voi_ind_to_S_sets.keys())
     S_sets = list(voi_ind_to_S_sets.values())
     
@@ -134,13 +134,15 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, solver='pul
     if b == c:
         J = a
         n = b
+        dist_matrices = dist_matrices.transpose((1, 2, 0))[voi_indices]
     else:
-        n_voi = a
         n = b
         J = c
 
     voi_to_Q_indices = {voi: np.array([int(i) for i in np.concatenate((range(0, voi), range(voi+1, n))) if i not in voi_ind_to_S_sets[voi]]) for voi in voi_indices}
 
+    up_bound = int(np.math.ceil(1 / variable_num_tol))
+    variable_num_tol = 1 / up_bound
 
     if threshold is not None:
         if b != c:
@@ -162,8 +164,8 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, solver='pul
 
         weights = pulp.LpVariable.dicts("weights for representations",
                                        (j for j in range(J)),
-                                       cat='Continuous',
-                                       upBound=1,
+                                       cat='Integer',
+                                       upBound=up_bound,
                                        lowBound=0
                                        )
 
@@ -177,20 +179,20 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, solver='pul
         model += (
             pulp.lpSum(
                 [weights[(j)] for j in range(J)]
-            ) == 1
+            ) == up_bound
         )
 
         for i, voi in enumerate(voi_indices):
-            dist_matrix = dist_matrices[:, :, voi]
+            dist_matrix = dist_matrices[i, :, :]
             for s in voi_ind_to_S_sets[voi]:
                 for q in voi_to_Q_indices[voi]:
                     model += (
                         pulp.lpSum(
-                            [weights[(j)] * dist_matrix[i, s, j] for j in range(J)]
+                            [weights[(j)] * dist_matrix[s, j] for j in range(J)]
                         )
                         <=
                         pulp.lpSum(
-                            [weights[(j)] * dist_matrix[i, q, j] for j in range(J)]
+                            [weights[(j)] * dist_matrix[q, j] for j in range(J)]
                         ) 
                         + 
                         pulp.lpSum(ind[('voi' + str(voi) + str(q))] * M)
@@ -206,4 +208,4 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, solver='pul
             print(e)
             alpha_hat = None
 
-    return alpha_hat
+    return alpha_hat / np.sum(alpha_hat)
