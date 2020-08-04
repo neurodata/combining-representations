@@ -143,7 +143,7 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, solver='pul
 
 
     if threshold is not None:
-        if b != c:
+        if b == c:
             raise ValueError('dist_matrices not shaped correctly')
         temp_dist_matrices = np.zeros((n_voi, n, J))
         for i, voi in enumerate(voi_indices):
