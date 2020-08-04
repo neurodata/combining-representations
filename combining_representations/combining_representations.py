@@ -213,6 +213,6 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='pulp',
             alpha_hat = np.array([w.varValue for w in weights.values()])
         except Exception as e: 
             print(e)
-            alpha_hat = None
+            return None
 
     return alpha_hat / np.sum(alpha_hat)
