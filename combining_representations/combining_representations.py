@@ -131,6 +131,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
  
 def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='pulp', solver='pulp', variable_num_tol=0.001):
     voi_indices = list(voi_ind_to_S_sets.keys())
+    n_voi = len(voi_indices)
     S_sets = list(voi_ind_to_S_sets.values())
     
     M = np.max(np.max(abs(dist_matrices), axis=0))
@@ -151,7 +152,7 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='pulp',
     variable_num_tol = 1 / up_bound
 
     if threshold is not None:
-        if b != c:
+        if b == c:
             raise ValueError('dist_matrices not shaped correctly')
         temp_dist_matrices = np.zeros((n_voi, n, J))
         for i, voi in enumerate(voi_indices):
