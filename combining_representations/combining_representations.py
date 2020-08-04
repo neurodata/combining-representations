@@ -89,10 +89,16 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
                     pulp.lpSum(ind[(q)] * M)
                 )
 
-        if solver=='pulp':
-            model.solve()
-        elif solver =='coin_cmd':
-            model.solve(solver=pulp.COIN_CMD())
+        try:
+            if solver == 'pulp':
+                model.solve()
+            elif solver == 'coin_cmd':
+                model.solve(solver=pulp.COIN_CMD())
+
+            alpha_hat = np.array([w.varValue for w in weights.values()])
+        except Exception as e: 
+            print(e)
+            return None
             
         alpha_hat = np.array([w.varValue for w in weights.values()])
     elif api=='gurobi':
@@ -121,7 +127,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
         else:
             return alpha_hat, np.average(dist_matrix, axis=1, weights=alpha_hat)
     
-    return alpha_hat
+    return alpha_hat / np.sum(alpha_hat)
  
 def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='pulp', solver='pulp', variable_num_tol=0.001):
     voi_indices = list(voi_ind_to_S_sets.keys())

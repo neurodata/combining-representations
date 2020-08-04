@@ -439,8 +439,10 @@ def evaluate_best_vertices(dist_matrix, vertices, s_star):
 def get_vertices_below_threshold(ranks, threshold=500):
     n, J = ranks.shape
     ranks_by_representation = ranks.T
+
+    valid_indices = [ranks_by_representation[j] <= threshold for j in range(J)]
     
-    return np.array([ranks_by_representation[j, ranks_by_representation[j] <= threshold] for j in range(J)])
+    return [ranks_by_representation[j, valid_indices[j]] for j in range(J)]
 
 def edit_dist_matrices(dist_matrices, s_stars, ranks, threshold=500):
     editted_dist_matrices = dist_matrices.copy()
@@ -461,8 +463,13 @@ def edit_dist_matrices(dist_matrices, s_stars, ranks, threshold=500):
     for i, s in enumerate(s_stars):
         for j, s_rank in enumerate(ranks[i]):
             if s_rank > threshold:
-                temp_rank = int(np.random.choice(ranks_below_threshold_by_representation[j], 1)[0])
-                editted_dist_matrices[s, j] = dist_matrices[arg_sorts[j][threshold], j] + (1e-10 / s)
+                if len(ranks_below_threshold_by_representation[j]) == 0:
+                    sampling_array = np.arange(threshold)
+                else:
+                    sampling_array = ranks_below_threshold_by_representation[j]
+
+                temp_rank = int(np.random.choice(sampling_array, 1)[0])
+                editted_dist_matrices[s, j] = dist_matrices[arg_sorts[j][temp_rank], j] + (1e-10 / s)
                 
     return editted_dist_matrices
 
