@@ -11,7 +11,7 @@ import numpy as np
 from .utils import *
 
 
-def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, threshold=None, solver='coin_cmd', api='py-mip', variable_num_tol=0.001, max_seconds=max_seconds):
+def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=True, threshold=None, solver='coin_cmd', api='py-mip', variable_num_tol=0.001, max_seconds=np.inf):
     """
     A function to find the weights of optimal linear combination of representations.
     
@@ -122,12 +122,6 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
             
         model.optimize()
         alpha_hat = np.array([i.X for i in list(w.values())])
-    
-    if return_new_dists:
-        if np.sum(alpha_hat == 0) == J:
-            return alpha_hat, dist_matrix
-        else:
-            return alpha_hat, np.average(dist_matrix, axis=1, weights=alpha_hat)
 
     elif api=='py-mip':
         model = mip.Model(sense=mip.MINIMIZE)
@@ -138,21 +132,31 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
             weights = [model.add_var(name='weights', lb=0.0, ub=1, var_type='C') for j in range(J)]
             model += mip.xsum(w for w in weights) == 1
         else:
-            weights = [model.add_var(name='weights', lb=0, ub=up_bound, var_type'I')]
+            weights = [model.add_var(name='weights', lb=0, ub=up_bound, var_type='I') for j in range(J)]
             model += mip.xsum(w for w in weights) == up_bound
         
         for s in S_indices:
-            for q in Q_indices:
-                model += mip.xsum(weights[j] * dist_matrix[s, j] for j in range(J)) <= mip.xsum(weights[(j)] * dist_matrix[q, j] for j in range(J)) + ind[q]*M
+            for i, q in enumerate(Q_indices):
+                model += mip.xsum(weights[j] * dist_matrix[s, j] for j in range(J)) <= mip.xsum(weights[j] * dist_matrix[q, j] for j in range(J)) + inds[i]*M
 
-        model.objective = xsum(ind for ind in inds)
+        model.objective = mip.xsum(ind for ind in inds)
         model.optimize(max_seconds=max_seconds)
 
         alpha_hat = np.array([w.x for w in weights])
+    else:
+        raise ValueError("api %s not implemented"%(api))
+    
+    if return_new_dists:
+        if np.sum(alpha_hat == 0) == J:
+            return alpha_hat, dist_matrix
+        else:
+            return alpha_hat, np.average(dist_matrix, axis=1, weights=alpha_hat)
+
+    
     
     return alpha_hat / np.sum(alpha_hat)
  
-def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip', solver='pulp', variable_num_tol=0.001):
+def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip', solver='pulp', variable_num_tol=0.001, max_seconds=np.inf):
     voi_indices = list(voi_ind_to_S_sets.keys())
     n_voi = len(voi_indices)
     S_sets = list(voi_ind_to_S_sets.values())
@@ -247,16 +251,16 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip
             weights = [model.add_var(name='weights', lb=0.0, ub=1, var_type='C') for j in range(J)]
             model += mip.xsum(w for w in weights) == 1
         else:
-            weights = [model.add_var(name='weights', lb=0, ub=up_bound, var_type'I')]
+            weights = [model.add_var(name='weights', lb=0, ub=up_bound, var_type='I')]
             model += mip.xsum(w for w in weights) == up_bound
         
         for i, voi in enumerate(voi_indices):
             dist_matrix = dist_matrices[i, :, :]
             for s in voi_ind_to_S_sets[voi]:
-                for q in voi_to_Q_indices[voi]:
-                    model += mip.xsum(weights[j] * dist_matrix[s, j] for j in range(J)) <= mip.xsum(weights[j] * dist_matrix[q, j] for j in range(J)) + ind[q]*M
+                for k, q in enumerate(voi_to_Q_indices[voi]):
+                    model += mip.xsum(weights[j] * dist_matrix[s, j] for j in range(J)) <= mip.xsum(weights[j] * dist_matrix[q, j] for j in range(J)) + inds[k]*M
 
-        model.objective = xsum(xsum(i for i in ind) for ind in inds)
+        model.objective = mip.xsum(mip.xsum(i for i in ind) for ind in inds)
         model.optimize(max_seconds=max_seconds)
 
         alpha_hat = np.array([w.x for w in weights])
