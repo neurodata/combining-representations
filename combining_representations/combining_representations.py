@@ -258,7 +258,7 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip
             dist_matrix = dist_matrices[i, :, :]
             for s in voi_ind_to_S_sets[voi]:
                 for k, q in enumerate(voi_to_Q_indices[voi]):
-                    model += mip.xsum(weights[j] * dist_matrix[s, j] for j in range(J)) <= mip.xsum(weights[j] * dist_matrix[q, j] for j in range(J)) + inds[k]*M
+                    model += mip.xsum(weights[j] * dist_matrix[s, j] for j in range(J)) <= mip.xsum(weights[j] * dist_matrix[q, j] for j in range(J)) + inds[i, k]*M
 
         model.objective = mip.xsum(mip.xsum(i for i in ind) for ind in inds)
         model.optimize(max_seconds=max_seconds)
