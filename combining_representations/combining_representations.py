@@ -251,7 +251,7 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip
             weights = [model.add_var(name='weights', lb=0.0, ub=1, var_type='C') for j in range(J)]
             model += mip.xsum(w for w in weights) == 1
         else:
-            weights = [model.add_var(name='weights', lb=0, ub=up_bound, var_type='I')]
+            weights = [model.add_var(name='weights', lb=0, ub=up_bound, var_type='I') for j in range(J)]
             model += mip.xsum(w for w in weights) == up_bound
         
         for i, voi in enumerate(voi_indices):
