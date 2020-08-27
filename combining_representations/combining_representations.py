@@ -48,12 +48,14 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     if variable_num_tol is not None:
         up_bound = int(np.math.ceil(1 / variable_num_tol))
         variable_num_tol = 1 / up_bound
+        cat='Integer'
     else:
         up_bound=1
+        cat='Continuous'
 
     if api == 'pulp':
         model=pulp.LpProblem(sense=pulp.LpMinimize)
-        ind = pulp.LpVariable.dicts("indicators for elements not in S", 
+        inds = pulp.LpVariable.dicts("indicators for elements not in S", 
                                     (q for q in Q_indices),
                                     cat='Integer',
                                     upBound=1,
@@ -62,14 +64,14 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
 
         weights = pulp.LpVariable.dicts("weights for representations",
                                        (j for j in range(J)),
-                                       cat='Integer',
+                                       cat=cat,
                                        upBound=up_bound,
                                        lowBound=0
                                        )
 
         model += (
             pulp.lpSum(
-                [ind[(q)] for q in Q_indices]
+                [inds[(q)] for q in Q_indices]
             )
         )
 
@@ -90,7 +92,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
                         [weights[(j)] * dist_matrix[q, j] for j in range(J)]
                     ) 
                     + 
-                    pulp.lpSum(ind[(q)] * M)
+                    pulp.lpSum(inds[(q)] * M * up_bound)
                 )
 
         try:
@@ -130,12 +132,12 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
 
         inds = [model.add_var(name='inds', var_type=mip.BINARY) for q in range(Q)]
 
-        if variable_num_tol is None:
-            weights = [model.add_var(name='weights', lb=0.0, ub=1, var_type='C') for j in range(J)]
-            model += mip.xsum(w for w in weights) == 1
-        else:
-            weights = [model.add_var(name='weights', lb=0, ub=up_bound, var_type='I') for j in range(J)]
-            model += mip.xsum(w for w in weights) == up_bound
+#         if variable_num_tol is None:
+        weights = [model.add_var(name='weights', lb=0.0, ub=up_bound, var_type=cat) for j in range(J)]
+        model += mip.xsum(w for w in weights) == 1
+#         else:
+#             weights = [model.add_var(name='weights', lb=0, ub=up_bound, var_type='I') for j in range(J)]
+#             model += mip.xsum(w for w in weights) == up_bound
         
         for s in S_indices:
             for i, q in enumerate(Q_indices):
@@ -177,9 +179,14 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip
 
     voi_to_Q_indices = {voi: np.array([int(i) for i in np.concatenate((range(0, voi), range(voi+1, n))) if i not in voi_ind_to_S_sets[voi]]) for voi in voi_indices}
 
-    up_bound = int(np.math.ceil(1 / variable_num_tol))
-    variable_num_tol = 1 / up_bound
-
+    if variable_num_tol is not None:
+        up_bound = int(np.math.ceil(1 / variable_num_tol))
+        variable_num_tol = 1 / up_bound
+        cat='Integer'
+    else:
+        up_bound=1
+        cat='Continuous'
+    
     if threshold is not None:
         if b == c:
             raise ValueError('dist_matrices not shaped correctly')
@@ -191,7 +198,7 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip
     if api == 'pulp':
         model=pulp.LpProblem(sense=pulp.LpMinimize)
 
-        ind = pulp.LpVariable.dicts("indicators for elements not in S", 
+        inds = pulp.LpVariable.dicts("indicators for elements not in S", 
                                     ('voi' + str(voi) + str(q) for voi in voi_indices for q in voi_to_Q_indices[voi]),
                                     cat='Integer',
                                     upBound=1,
@@ -200,14 +207,14 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip
 
         weights = pulp.LpVariable.dicts("weights for representations",
                                        (j for j in range(J)),
-                                       cat='Integer',
+                                       cat=cat,
                                        upBound=up_bound,
                                        lowBound=0
                                        )
 
         model += (
             pulp.lpSum(
-                [ind[('voi' + str(voi) + str(q))] for voi in voi_indices for q in voi_to_Q_indices[voi]]
+                [inds[('voi' + str(voi) + str(q))] for voi in voi_indices for q in voi_to_Q_indices[voi]]
             )
 
         )
@@ -231,7 +238,7 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip
                             [weights[(j)] * dist_matrix[q, j] for j in range(J)]
                         ) 
                         + 
-                        pulp.lpSum(ind[('voi' + str(voi) + str(q))] * M)
+                        pulp.lpSum(inds[('voi' + str(voi) + str(q))] * M * up_bound)
                     )
         try:
             if solver == 'pulp':
@@ -249,12 +256,12 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip
         # Need to fix inds
         inds = [[model.add_var(name='inds', var_type=mip.BINARY) for q in voi_to_Q_indices[voi]] for voi in voi_indices]
 
-        if variable_num_tol is None:
-            weights = [model.add_var(name='weights', lb=0.0, ub=1, var_type='C') for j in range(J)]
-            model += mip.xsum(w for w in weights) == 1
-        else:
-            weights = [model.add_var(name='weights', lb=0, ub=up_bound, var_type='I') for j in range(J)]
-            model += mip.xsum(w for w in weights) == up_bound
+#         if variable_num_tol is None:
+        weights = [model.add_var(name='weights', lb=0.0, ub=up_bound, var_type=cat) for j in range(J)]
+        model += mip.xsum(w for w in weights) == up_bound
+#         else:
+#             weights = [model.add_var(name='weights', lb=0, ub=up_bound, var_type='I') for j in range(J)]
+#             model += mip.xsum(w for w in weights) == up_bound
         
         for i, voi in enumerate(voi_indices):
             dist_matrix = dist_matrices[i, :, :]
