@@ -48,6 +48,8 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     if variable_num_tol is not None:
         up_bound = int(np.math.ceil(1 / variable_num_tol))
         variable_num_tol = 1 / up_bound
+    else:
+        up_bound=1
 
     if api == 'pulp':
         model=pulp.LpProblem(sense=pulp.LpMinimize)
@@ -137,7 +139,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
         
         for s in S_indices:
             for i, q in enumerate(Q_indices):
-                model += mip.xsum(weights[j] * dist_matrix[s, j] for j in range(J)) <= mip.xsum(weights[j] * dist_matrix[q, j] for j in range(J)) + inds[i]*M
+                model += mip.xsum(weights[j] * dist_matrix[s, j] for j in range(J)) <= mip.xsum(weights[j] * dist_matrix[q, j] for j in range(J)) + inds[i]*M*up_bound
 
         model.objective = mip.xsum(ind for ind in inds)
         model.optimize(max_seconds=max_seconds)
@@ -258,7 +260,7 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip
             dist_matrix = dist_matrices[i, :, :]
             for s in voi_ind_to_S_sets[voi]:
                 for k, q in enumerate(voi_to_Q_indices[voi]):
-                    model += mip.xsum(weights[j] * dist_matrix[s, j] for j in range(J)) <= mip.xsum(weights[j] * dist_matrix[q, j] for j in range(J)) + inds[i][k]*M
+                    model += mip.xsum(weights[j] * dist_matrix[s, j] for j in range(J)) <= mip.xsum(weights[j] * dist_matrix[q, j] for j in range(J)) + inds[i][k]*M*up_bound
 
         model.objective = mip.xsum(mip.xsum(i for i in ind) for ind in inds)
         model.optimize(max_seconds=max_seconds)
