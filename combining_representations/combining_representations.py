@@ -156,9 +156,10 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
         else:
             return alpha_hat, np.average(dist_matrix, axis=1, weights=alpha_hat)
 
-    
-    
-    return alpha_hat / np.sum(alpha_hat)
+    if alpha_hat[0] is None:
+        return None
+    else:
+        return alpha_hat / np.sum(alpha_hat)
  
 def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip', solver='pulp', variable_num_tol=0.001, max_seconds=np.inf):
     voi_indices = list(voi_ind_to_S_sets.keys())
@@ -274,4 +275,7 @@ def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip
 
         alpha_hat = np.array([w.x for w in weights])
 
-    return alpha_hat / np.sum(alpha_hat)
+    if alpha_hat[0] is None:
+        return None
+    else:
+        return alpha_hat / np.sum(alpha_hat)
