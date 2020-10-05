@@ -1,13 +1,18 @@
+# if gurobi is available then import it
+
 try:
     import gurobipy as gp
     from gurobipy import GRB
 except:
     pass
 
+# import the open-source apis (pulp, mip)
 import pulp
 import mip
+
 import numpy as np
 
+# import some utility functions
 from .utils import *
 
 
@@ -39,30 +44,58 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     -- optional -- new_dists - np.array (length=n)
         Array containing the distances after applying the learned weight vector. 
     """
+    
+    # Grab the shape of the data that was passed int
     n, J = dist_matrix.shape
 
+    # Pre-process the data so that there are no elements of S_indices that are above threshold
     if threshold is not None:
         ranks = evaluate_best_vertices(dist_matrix, vertices=np.arange(J), s_star=S_indices)
         dist_matrix = edit_dist_matrices(dist_matrix, S_indices, ranks, threshold)
 
-    n, J = dist_matrix.shape
+    # Grab the maximum value of dist_matrix (to be used as an upper bound later)
     M = np.max(abs(dist_matrix))
     
+    # Grab the number of elements known to be similar to voi_index
     S = len(S_indices)
+    
+    # Define an array of integers corresponding to elements not in S_indices
     Q_indices = np.array([int(i) for i in np.concatenate((range(0, voi_index), range(voi_index+1, n))) if i not in S_indices])
 
+    # Grab the number of elements not known to be similar to voi_index
     Q = len(Q_indices)
 
+    # We can either use continuous weights for the representations or use discrete approximation
     if variable_num_tol is not None:
+        # Here, we are using a discrete approximation
+        
+        # variable_num_tol is in the interval (0, 1]. If variable_num_tol is close to 0 that means 
+        # we want our approximation to be of a high resolution. To achieve this, we define 1 / variable_num_tol
+        # to be the maximum value that a particular weight can take on. 
+        # i.e. with variable_num_tol = 0.1, the weights can take on values 0.0, 0.1, 0.2, 0.3, .., 1.
+        # We normalize later.
         up_bound = int(np.math.ceil(1 / variable_num_tol))
         variable_num_tol = 1 / up_bound
         cat='Integer'
     else:
+        # Here, we let the weights be continuous
         up_bound=1
         cat='Continuous'
-
+        
+       
+    # We've implemented the ILP in 3 different APIs: pulp, py-mip and gurobi.
+    # Gurobi seems to be the industry standard but licensing is a bit prohibitive.
+    
+    # Each API is relatively similar. First, you define a set of variables. 
+    # Then, using these variables, you define an objective function and a set of constraints that you assign to a model object. 
+ 
     if api == 'pulp':
+        # Define a model.
         model=pulp.LpProblem(sense=pulp.LpMinimize)
+        
+        # Define indicator variables (as defined in section 1.2 of https://arxiv.org/pdf/2005.10700.pdf) for every vertex
+        # That is not in S_indices.
+        # NB: i am more than happy to walk through the paper if that would be helpful!
         inds = pulp.LpVariable.dicts("indicators for elements not in S", 
                                     (q for q in Q_indices),
                                     cat='Integer',
@@ -70,6 +103,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
                                     lowBound=0
                                     )
 
+        # Define non-negative weight variables for each of the representations.
         weights = pulp.LpVariable.dicts("weights for representations",
                                        (j for j in range(J)),
                                        cat=cat,
@@ -77,18 +111,21 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
                                        lowBound=0
                                        )
 
+        # Set the objective function.
         model += (
             pulp.lpSum(
                 [inds[(q)] for q in Q_indices]
             )
         )
 
+        # Add constraint that the weights must sum to the upper bound defined by variable_num_tol.
         model += (
             pulp.lpSum(
                 [weights[(j)] for j in range(J)]
             ) == up_bound
         )
-
+        
+        # Add constraint that elements of S_indices should be closer than elements not in S_indices (or, the Q_indices)
         for s in S_indices:
             for q in Q_indices:
                 model += (
@@ -103,6 +140,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
                     pulp.lpSum(inds[(q)] * M * up_bound)
                 )
 
+        # Different solvers for api == 'pulp'
         try:
             if solver == 'pulp':
                 model.solve()
@@ -158,6 +196,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     else:
         raise ValueError("api %s not implemented"%(api))
     
+    # Return the new distances if told to do so.
     if return_new_dists:
         if np.sum(alpha_hat == 0) == J:
             return alpha_hat, dist_matrix
@@ -167,6 +206,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
     if alpha_hat[0] is None:
         return None
     else:
+        # Normalize
         return alpha_hat / np.sum(alpha_hat)
  
 def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip', solver='pulp', variable_num_tol=0.001, max_seconds=np.inf):
