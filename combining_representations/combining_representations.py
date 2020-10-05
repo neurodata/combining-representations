@@ -25,11 +25,19 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
         Indices of the vertices that should be at the top of the
         nomination list for the vertex of interest.
     return_new_dists - bool
-        If true, returns both the weights and the corresponding distance matrix
+        If true, returns both the weights and the corresponding distance matrix.
+    threshold - maximum value of the rank of an element of S_indices.
+    solver - solver to use. in {'coin_cmd'}
+    api - api to use. in {'gurobi', 'py-mip', 'pulp'}
+    variable_num_tol - float in (0, 1]. resolution of the approximation of the continuous weights.
+        If None, continuous weights are found.
+    max_seconds - float in (0, inf)
         
     Return
     weights - np.array (length=J)
         Array containing the coefficients for the optimal distance function.
+    -- optional -- new_dists - np.array (length=n)
+        Array containing the distances after applying the learned weight vector. 
     """
     n, J = dist_matrix.shape
 
@@ -162,6 +170,9 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
         return alpha_hat / np.sum(alpha_hat)
  
 def multiple_pairs(dist_matrices, voi_ind_to_S_sets, threshold=None, api='py-mip', solver='pulp', variable_num_tol=0.001, max_seconds=np.inf):
+    """
+    Doc string to be written.
+    """
     voi_indices = list(voi_ind_to_S_sets.keys())
     n_voi = len(voi_indices)
     S_sets = list(voi_ind_to_S_sets.values())
