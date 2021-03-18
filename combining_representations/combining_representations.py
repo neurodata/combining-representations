@@ -157,6 +157,7 @@ def combine_representations(dist_matrix, voi_index, S_indices, return_new_dists=
         model= gp.Model()
         
         model.setParam('OutputFlag', 0)
+        model.setParam('TimeLimit', max_seconds)
 
         ind = model.addVars(Q, vtype=GRB.BINARY, name='ind')
         model.setObjective(gp.quicksum(ind), GRB.MINIMIZE)
