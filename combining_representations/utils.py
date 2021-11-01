@@ -1,5 +1,5 @@
 import numpy as np
-import graspy
+import graspologic
 from sklearn.metrics import pairwise_distances
 from scipy.stats import gaussian_kde
 import matplotlib.pyplot as plt
